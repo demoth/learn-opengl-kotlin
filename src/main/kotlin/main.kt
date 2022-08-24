@@ -17,6 +17,7 @@ fun main() {
 class HelloWorld {
     // The window handle
     private var window: Long = 0
+    private val fullscreen = false
     fun run() {
         System.out.println("Hello LWJGL " + Version.getVersion() + "!")
         init()
@@ -28,7 +29,7 @@ class HelloWorld {
 
         // Terminate GLFW and free the error callback
         glfwTerminate()
-        glfwSetErrorCallback(null)!!.free()
+        glfwSetErrorCallback(null)?.free()
     }
 
     private fun init() {
@@ -43,9 +44,15 @@ class HelloWorld {
         glfwDefaultWindowHints() // optional, the current window hints are already the default
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE) // the window will stay hidden after creation
         glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE) // the window will be resizable
+        glfwWindowHint(GLFW_STENCIL_BITS, 8)
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3)
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3)
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE)
 
         // Create the window
-        window = glfwCreateWindow(300, 300, "Hello World!", NULL, NULL)
+        val primaryMonitor = glfwGetPrimaryMonitor()
+
+        window = glfwCreateWindow(1920, 1080, "Hello World!", if (fullscreen) primaryMonitor else NULL, NULL)
         if (window == NULL) throw RuntimeException("Failed to create the GLFW window")
 
         // Setup a key callback. It will be called every time a key is pressed, repeated or released.
@@ -61,11 +68,10 @@ class HelloWorld {
             glfwGetWindowSize(window, pWidth, pHeight)
 
             // Get the resolution of the primary monitor
-            val vidmode = glfwGetVideoMode(glfwGetPrimaryMonitor())
+            val vidmode = glfwGetVideoMode(primaryMonitor)
 
             // Center the window
-            glfwSetWindowPos(
-                window,
+            glfwSetWindowPos(window,
                 (vidmode!!.width() - pWidth[0]) / 2,
                 (vidmode.height() - pHeight[0]) / 2
             )
@@ -89,7 +95,7 @@ class HelloWorld {
         GL.createCapabilities()
 
         // Set the clear color
-        glClearColor(1.0f, 0.0f, 0.0f, 0.0f)
+        glClearColor(0.2f, 0.2f, 0.4f, 0.0f)
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.

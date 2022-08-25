@@ -16,6 +16,9 @@ class SimpleShader {
     private var window: Long = 0
     private val fullscreen = false
 
+    private var vertexShader: Int = 0
+    private var fragmentShader: Int = 0
+
 
     private val vertexShaderSource = """
         #version 330 core
@@ -110,17 +113,10 @@ class SimpleShader {
             glViewport(0, 0, width, height)
         }
 
-        val vertexShader = GL20.glCreateShader(GL_VERTEX_SHADER)
-        GL20.glShaderSource(vertexShader, vertexShaderSource)
-        GL20.glCompileShader(vertexShader)
+        vertexShader = createShader(vertexShaderSource)
+        fragmentShader = createShader(fragmentShaderSource)
 
-        val statusValue = IntArray(1)
-        GL20.glGetShaderiv(vertexShader, GL_COMPILE_STATUS, statusValue)
-        val status = if (statusValue.first() != 0) "Success" else "Failure"
-        println("Shader compiled: $status")
 
-        val compilationOutput = GL20.glGetShaderInfoLog(vertexShader, 1024)
-        println("Compilation output: $compilationOutput")
 
         // Enable v-sync
         GLFW.glfwSwapInterval(1)
@@ -159,6 +155,24 @@ class SimpleShader {
             GLFW.glfwPollEvents()
         }
     }
+}
+
+fun createShader(source: String): Int {
+    // Shader related code
+    val shader = GL20.glCreateShader(GL_VERTEX_SHADER)
+    GL20.glShaderSource(shader, source)
+    GL20.glCompileShader(shader)
+
+    val statusValue = IntArray(1)
+    GL20.glGetShaderiv(shader, GL_COMPILE_STATUS, statusValue)
+    val status = if (statusValue.first() != 0) "Success" else "Failure"
+    println("Shader compiled: $status")
+
+    val compilationOutput = GL20.glGetShaderInfoLog(shader, 1024)
+    if (compilationOutput.isNotBlank())
+        println("Compilation output: $compilationOutput")
+
+    return shader
 }
 
 fun main() {

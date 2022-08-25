@@ -1,25 +1,57 @@
 import org.lwjgl.Version
-import org.lwjgl.glfw.*
 import org.lwjgl.glfw.Callbacks.glfwFreeCallbacks
-import org.lwjgl.glfw.GLFW.*
-import org.lwjgl.opengl.*
-import org.lwjgl.opengl.GL11.*
-import org.lwjgl.system.*
+import org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MAJOR
+import org.lwjgl.glfw.GLFW.GLFW_CONTEXT_VERSION_MINOR
+import org.lwjgl.glfw.GLFW.GLFW_FALSE
+import org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE
+import org.lwjgl.glfw.GLFW.GLFW_OPENGL_CORE_PROFILE
+import org.lwjgl.glfw.GLFW.GLFW_OPENGL_PROFILE
+import org.lwjgl.glfw.GLFW.GLFW_RELEASE
+import org.lwjgl.glfw.GLFW.GLFW_RESIZABLE
+import org.lwjgl.glfw.GLFW.GLFW_STENCIL_BITS
+import org.lwjgl.glfw.GLFW.GLFW_TRUE
+import org.lwjgl.glfw.GLFW.GLFW_VISIBLE
+import org.lwjgl.glfw.GLFW.glfwCreateWindow
+import org.lwjgl.glfw.GLFW.glfwDefaultWindowHints
+import org.lwjgl.glfw.GLFW.glfwDestroyWindow
+import org.lwjgl.glfw.GLFW.glfwGetPrimaryMonitor
+import org.lwjgl.glfw.GLFW.glfwGetVideoMode
+import org.lwjgl.glfw.GLFW.glfwGetWindowSize
+import org.lwjgl.glfw.GLFW.glfwInit
+import org.lwjgl.glfw.GLFW.glfwMakeContextCurrent
+import org.lwjgl.glfw.GLFW.glfwPollEvents
+import org.lwjgl.glfw.GLFW.glfwSetErrorCallback
+import org.lwjgl.glfw.GLFW.glfwSetKeyCallback
+import org.lwjgl.glfw.GLFW.glfwSetWindowPos
+import org.lwjgl.glfw.GLFW.glfwSetWindowShouldClose
+import org.lwjgl.glfw.GLFW.glfwShowWindow
+import org.lwjgl.glfw.GLFW.glfwSwapBuffers
+import org.lwjgl.glfw.GLFW.glfwSwapInterval
+import org.lwjgl.glfw.GLFW.glfwTerminate
+import org.lwjgl.glfw.GLFW.glfwWindowHint
+import org.lwjgl.glfw.GLFW.glfwWindowShouldClose
+import org.lwjgl.glfw.GLFWErrorCallback
+import org.lwjgl.opengl.GL
+import org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT
+import org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT
+import org.lwjgl.opengl.GL11.glClear
+import org.lwjgl.opengl.GL11.glClearColor
 import org.lwjgl.system.MemoryStack.stackPush
 import org.lwjgl.system.MemoryUtil.NULL
-import java.nio.*
-
 
 fun main() {
     HelloWorld().run()
 }
 
+/**
+ * Taken from the LWJGL home page and transformed to kotlin
+ */
 class HelloWorld {
     // The window handle
     private var window: Long = 0
     private val fullscreen = false
     fun run() {
-        System.out.println("Hello LWJGL " + Version.getVersion() + "!")
+        println("Hello LWJGL " + Version.getVersion() + "!")
         init()
         loop()
 
@@ -33,7 +65,7 @@ class HelloWorld {
     }
 
     private fun init() {
-        // Setup an error callback. The default implementation
+        // Set up an error callback. The default implementation
         // will print the error message in System.err.
         GLFWErrorCallback.createPrint(System.err).set()
 
@@ -55,25 +87,26 @@ class HelloWorld {
         window = glfwCreateWindow(1920, 1080, "Hello World!", if (fullscreen) primaryMonitor else NULL, NULL)
         if (window == NULL) throw RuntimeException("Failed to create the GLFW window")
 
-        // Setup a key callback. It will be called every time a key is pressed, repeated or released.
+        // Set up a key callback. It will be called every time a key is pressed, repeated or released.
+        // Alternative approach would be probing a specific key event in the main loop.
         glfwSetKeyCallback(window) { window: Long, key: Int, scancode: Int, action: Int, mods: Int ->
             if (key == GLFW_KEY_ESCAPE && action == GLFW_RELEASE)
                 glfwSetWindowShouldClose(window, true) // We will detect this in the rendering loop
         }
         stackPush().use { stack ->
-            val pWidth = stack.mallocInt(1) // int*
-            val pHeight = stack.mallocInt(1) // int*
+            val width = stack.mallocInt(1) // int*
+            val height = stack.mallocInt(1) // int*
 
             // Get the window size passed to glfwCreateWindow
-            glfwGetWindowSize(window, pWidth, pHeight)
+            glfwGetWindowSize(window, width, height)
 
             // Get the resolution of the primary monitor
             val vidmode = glfwGetVideoMode(primaryMonitor)
 
             // Center the window
             glfwSetWindowPos(window,
-                (vidmode!!.width() - pWidth[0]) / 2,
-                (vidmode.height() - pHeight[0]) / 2
+                (vidmode!!.width() - width[0]) / 2,
+                (vidmode.height() - height[0]) / 2
             )
         }
 

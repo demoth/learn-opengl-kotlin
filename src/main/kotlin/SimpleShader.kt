@@ -4,10 +4,18 @@ import org.lwjgl.glfw.GLFW
 import org.lwjgl.glfw.GLFWErrorCallback
 import org.lwjgl.opengl.GL
 import org.lwjgl.opengl.GL11
+import org.lwjgl.opengl.GL11.GL_FLOAT
+import org.lwjgl.opengl.GL11.GL_TRIANGLES
 import org.lwjgl.opengl.GL11.glViewport
+import org.lwjgl.opengl.GL15
+import org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER
+import org.lwjgl.opengl.GL15.GL_STATIC_DRAW
 import org.lwjgl.opengl.GL20
 import org.lwjgl.opengl.GL20.GL_COMPILE_STATUS
+import org.lwjgl.opengl.GL20.GL_FRAGMENT_SHADER
+import org.lwjgl.opengl.GL20.GL_LINK_STATUS
 import org.lwjgl.opengl.GL20.GL_VERTEX_SHADER
+import org.lwjgl.opengl.GL30
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil
 
@@ -16,9 +24,8 @@ class SimpleShader {
     private var window: Long = 0
     private val fullscreen = false
 
-    private var vertexShader: Int = 0
-    private var fragmentShader: Int = 0
-
+    private var shaderProgram: Int = 0
+    private var vertexArray = 0
 
     private val vertexShaderSource = """
         #version 330 core
@@ -72,14 +79,11 @@ class SimpleShader {
         // Create the window
         val primaryMonitor = GLFW.glfwGetPrimaryMonitor()
 
-        window = GLFW.glfwCreateWindow(
-            512,
-            512,
-            "Hello World!",
+        window = GLFW.glfwCreateWindow(512, 512, "Hello World!",
             if (fullscreen) primaryMonitor else MemoryUtil.NULL,
             MemoryUtil.NULL
         )
-        if (window == MemoryUtil.NULL) throw RuntimeException("Failed to create the GLFW window")
+        check(window != MemoryUtil.NULL) { "Failed to create the GLFW window" }
 
         // Set up a key callback. It will be called every time a key is pressed, repeated or released.
         // Alternative approach would be probing a specific key event in the main loop.
@@ -113,24 +117,40 @@ class SimpleShader {
             glViewport(0, 0, width, height)
         }
 
-        vertexShader = createShader(vertexShaderSource)
-        fragmentShader = createShader(fragmentShaderSource)
+        val vertexShader = createShader(vertexShaderSource, GL_VERTEX_SHADER)
+        val fragmentShader = createShader(fragmentShaderSource, GL_FRAGMENT_SHADER)
+        shaderProgram = createProgram(vertexShader, fragmentShader)
 
+        GL20.glDeleteShader(vertexShader)
+        GL20.glDeleteShader(fragmentShader)
 
+        // x, y
+        val vertices = floatArrayOf(
+            0.0f, 0.5f, 0.0f,
+            0.5f, -0.5f, 0.0f,
+            -0.5f, -0.5f, 0.0f
+        )
+
+        val vertexBuffer = GL15.glGenBuffers()
+        vertexArray = GL30.glGenVertexArrays()
+
+        GL30.glBindVertexArray(vertexArray)
+
+        GL15.glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
+        GL15.glBufferData(vertexBuffer, vertices, GL_STATIC_DRAW)
+
+        GL20.glVertexAttribPointer(0, 3, GL_FLOAT, false, 3, 0)
+        GL20.glEnableVertexAttribArray(0)
+
+        // why?
+        GL15.glBindBuffer(GL_ARRAY_BUFFER, 0) // unbind
+        GL30.glBindVertexArray(0) // unbind
 
         // Enable v-sync
         GLFW.glfwSwapInterval(1)
 
         // Make the window visible
         GLFW.glfwShowWindow(window)
-
-        // x, y
-        val vertices = floatArrayOf(
-            0.0f, 0.5f,
-            0.5f, -0.5f,
-            -0.5f, -0.5f,
-        )
-
     }
 
     private fun loop() {
@@ -141,13 +161,18 @@ class SimpleShader {
         // bindings available for use.
         GL.createCapabilities()
 
-        // Set the clear color
-        GL11.glClearColor(0.2f, 0.2f, 0.4f, 0.0f)
 
         // Run the rendering loop until the user has attempted to close
         // the window or has pressed the ESCAPE key.
         while (!GLFW.glfwWindowShouldClose(window)) {
+            // Set the clear color
+            GL11.glClearColor(0.0f, 0.0f, 0.00f, 0.0f)
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT) // clear the framebuffer
+
+            GL20.glUseProgram(shaderProgram)
+            GL30.glBindVertexArray(vertexArray)
+            GL11.glDrawArrays(GL_TRIANGLES, 0, 3)
+
             GLFW.glfwSwapBuffers(window) // swap the color buffers
 
             // Poll for window events. The key callback above will only be
@@ -157,9 +182,29 @@ class SimpleShader {
     }
 }
 
-fun createShader(source: String): Int {
+fun createProgram(vararg shaders: Int): Int {
+    val program = GL20.glCreateProgram()
+    shaders.forEach {
+        GL20.glAttachShader(program, it)
+    }
+    GL20.glLinkProgram(program)
+
+    val statusValue = IntArray(1)
+    GL20.glGetProgramiv(program, GL_LINK_STATUS, statusValue)
+    val status = if (statusValue.first() != 0) "Success" else "Failure"
+    println("Program compiled: $status")
+
+    val compilationOutput = GL20.glGetProgramInfoLog(program, 1024)
+    if (compilationOutput.isNotBlank())
+        println("Linking output: $compilationOutput")
+
+    return program
+
+}
+
+fun createShader(source: String, type: Int): Int {
     // Shader related code
-    val shader = GL20.glCreateShader(GL_VERTEX_SHADER)
+    val shader = GL20.glCreateShader(type)
     GL20.glShaderSource(shader, source)
     GL20.glCompileShader(shader)
 

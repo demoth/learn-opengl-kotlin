@@ -1,3 +1,4 @@
+import org.lwjgl.BufferUtils
 import org.lwjgl.Version
 import org.lwjgl.glfw.Callbacks
 import org.lwjgl.glfw.GLFW
@@ -26,24 +27,6 @@ class SimpleShader {
 
     private var shaderProgram: Int = 0
     private var vertexArray = 0
-
-    private val vertexShaderSource = """
-        #version 330 core
-        layout (location = 0) in vec3 vert;
-        void main()
-        {
-            gl_Position = vec4(vert.x, vert.y, 0.0, 1.0);
-        }
-    """.trimIndent()
-
-    private val fragmentShaderSource = """
-        #version 330 core
-        out vec4 outColor;
-        void main()
-        {
-            outColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);
-        }
-    """.trimIndent()
 
     fun run() {
         println("Hello LWJGL " + Version.getVersion() + "!")
@@ -117,40 +100,15 @@ class SimpleShader {
             glViewport(0, 0, width, height)
         }
 
-        vertexArray = GL30.glGenVertexArrays()
-        GL30.glBindVertexArray(vertexArray)
-
-        // x, y
-        val vertices = floatArrayOf(
-            0.0f, 0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            -0.5f, -0.5f, 0.0f
-        )
-        val vertexBuffer = GL15.glGenBuffers()
-        GL15.glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
-        GL15.glBufferData(vertexBuffer, vertices, GL_STATIC_DRAW)
-
-
-        // why?
-        GL15.glBindBuffer(GL_ARRAY_BUFFER, 0) // unbind
 
         // Create and compile shaders
-        val vertexShader = createShader(vertexShaderSource, GL_VERTEX_SHADER)
-        val fragmentShader = createShader(fragmentShaderSource, GL_FRAGMENT_SHADER)
+        val vertexShader = createShader("simple-vs.glsl", GL_VERTEX_SHADER)
+        val fragmentShader = createShader("simple-fs.glsl", GL_FRAGMENT_SHADER)
         shaderProgram = createProgram(vertexShader, fragmentShader)
-
-        // bind vertex attribute
-        val vertAttrLocation = GL20.glGetAttribLocation(shaderProgram, "vert")
-        GL20.glEnableVertexAttribArray(vertAttrLocation)
-        GL20.glVertexAttribPointer(vertAttrLocation, 3, GL_FLOAT, false, 0, 0)
-
-
         GL20.glDeleteShader(vertexShader)
         GL20.glDeleteShader(fragmentShader)
 
-        GL30.glBindVertexArray(0) // unbind
-
-
+        createVao()
 
         // Enable v-sync
         GLFW.glfwSwapInterval(1)
@@ -178,7 +136,10 @@ class SimpleShader {
 
             GL20.glUseProgram(shaderProgram)
             GL30.glBindVertexArray(vertexArray)
-            GL11.glDrawArrays(GL_TRIANGLES, 0, 3)
+            GL11.glDrawArrays(GL_TRIANGLES, 0, 6)
+
+            GL30.glBindVertexArray(0)
+            GL20.glUseProgram(0)
 
             GLFW.glfwSwapBuffers(window) // swap the color buffers
 
@@ -187,6 +148,45 @@ class SimpleShader {
             GLFW.glfwPollEvents()
         }
     }
+
+    fun createVao() {
+        vertexArray = GL30.glGenVertexArrays()
+        GL30.glBindVertexArray(vertexArray)
+
+        // x, y
+        val vertices = floatArrayOf(
+            0.0f, 0.5f, 0.0f,
+            0.5f, -0.5f, 0.0f,
+            -0.5f, -0.5f, 0.0f,
+        )
+        val bb = BufferUtils.createByteBuffer(4 * 2 * 6)
+        val fv = bb.asFloatBuffer()
+        fv.put(-1.0f).put(-1.0f)
+        fv.put(1.0f).put(-1.0f)
+        fv.put(1.0f).put(1.0f)
+        fv.put(1.0f).put(1.0f)
+        fv.put(-1.0f).put(1.0f)
+        fv.put(-1.0f).put(-1.0f)
+
+
+        val vertexBuffer = GL15.glGenBuffers()
+        GL15.glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer)
+        GL15.glBufferData(vertexBuffer, bb, GL_STATIC_DRAW)
+
+        // bind vertex attribute
+//        val vertAttrLocation = GL20.glGetAttribLocation(shaderProgram, "vert")
+//        GL20.glEnableVertexAttribArray(vertAttrLocation)
+//        GL20.glVertexAttribPointer(vertAttrLocation, 3, GL_FLOAT, false, 0, 0)
+        GL20.glEnableVertexAttribArray(0)
+        GL20.glVertexAttribPointer(0, 2, GL_FLOAT, false, 0, 0)
+
+
+
+        // unbind
+        GL15.glBindBuffer(GL_ARRAY_BUFFER, 0)
+        GL30.glBindVertexArray(0)
+    }
+
 }
 
 fun createProgram(vararg shaders: Int): Int {
@@ -194,6 +194,7 @@ fun createProgram(vararg shaders: Int): Int {
     shaders.forEach {
         GL20.glAttachShader(program, it)
     }
+    GL20.glBindAttribLocation(program, 0, "gl_Position")
     GL30.glBindFragDataLocation(program, 0, "outColor")
 
     GL20.glLinkProgram(program)
@@ -211,7 +212,11 @@ fun createProgram(vararg shaders: Int): Int {
 
 }
 
-fun createShader(source: String, type: Int): Int {
+fun createShader(fileName: String, type: Int): Int {
+    val resource = SimpleShader::class.java.getResourceAsStream("/shaders/" + fileName)
+    checkNotNull(resource) { "Can not read $fileName" }
+
+    val source = String(resource.readAllBytes())
     // Shader related code
     val shader = GL20.glCreateShader(type)
     GL20.glShaderSource(shader, source)
@@ -228,6 +233,7 @@ fun createShader(source: String, type: Int): Int {
 
     return shader
 }
+
 
 fun main() {
     SimpleShader().run()

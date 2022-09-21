@@ -4,11 +4,8 @@
  */
 #version 150 core
 
-uniform vec3 cols[4];
-uniform int chosen;
-
 out vec4 color;
 
 void main(void) {
-	color = vec4(cols[chosen], 1.0);
+    color = vec4(1.0, 0.5, 0.2, 1.0);
 }

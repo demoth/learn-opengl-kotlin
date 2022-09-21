@@ -20,7 +20,11 @@ import org.lwjgl.system.Callback
 import org.lwjgl.system.MemoryStack
 import org.lwjgl.system.MemoryUtil.*
 
-class UniformArrayDemo {
+/**
+ * Draw simple triangle using vertex & fragment shader.
+ * Based on the UniformArrayDemo from lwjgl demos
+ */
+open class SimpleShader(private val vertexShader: String, private val fragmentShader: String) {
     private var window: Long = 0
     private var width = 1024
     private var height = 768
@@ -43,7 +47,7 @@ class UniformArrayDemo {
         GLFW.glfwWindowHint(GLFW.GLFW_VISIBLE, GLFW.GLFW_FALSE)
         GLFW.glfwWindowHint(GLFW.GLFW_RESIZABLE, GLFW.GLFW_TRUE)
 
-        window = GLFW.glfwCreateWindow(width, height, "Uniform array test", NULL, NULL)
+        window = GLFW.glfwCreateWindow(width, height, "Simple shader example", NULL, NULL)
         check(window != NULL) { "Failed to create the GLFW window" }
 
         GLFW.glfwSetFramebufferSizeCallback(window, object : GLFWFramebufferSizeCallback() {
@@ -83,11 +87,9 @@ class UniformArrayDemo {
         GL.createCapabilities()
         debugProc = GLUtil.setupDebugMessageCallback()
 
-        createVao()
-        program = createRasterProgram("/shaders/uniformarray-vs.glsl", "/shaders/uniformarray-fs.glsl")
+        vao = createVao()
+        program = createRasterProgram(vertexShader, fragmentShader)
     }
-
-
 
     private fun render() {
         GL11C.glClear(GL11.GL_COLOR_BUFFER_BIT or GL11.GL_DEPTH_BUFFER_BIT)
@@ -95,7 +97,7 @@ class UniformArrayDemo {
 
         GL20C.glUseProgram(program)
         GL30C.glBindVertexArray(vao)
-        GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 6)
+        draw()
 
         // unbind
         GL30C.glBindVertexArray(0)
@@ -128,40 +130,10 @@ class UniformArrayDemo {
         }
     }
 
-    private fun createRasterProgram(vertexSource: String, fragmentSource: String): Int {
-        val program = GL20C.glCreateProgram()
-        val vertexShader = createShader(vertexSource, GL20C.GL_VERTEX_SHADER)
-        val fragmentShader = createShader(fragmentSource, GL20C.GL_FRAGMENT_SHADER)
-        GL20C.glAttachShader(program, vertexShader)
-        GL20C.glAttachShader(program, fragmentShader)
-        GL20C.glBindAttribLocation(program, 0, "position")
-        GL30C.glBindFragDataLocation(program, 0, "color")
-        GL20C.glLinkProgram(program)
-        val linkStatus = GL20C.glGetProgrami(program, GL20C.GL_LINK_STATUS)
-        val programLog = GL20C.glGetProgramInfoLog(program)
-        if (programLog.isNotEmpty()) {
-            System.err.println(programLog)
-        }
-        check(linkStatus != 0) { "Could not link program" }
-        return program
-    }
+    open fun draw() = GL11C.glDrawArrays(GL11C.GL_TRIANGLES, 0, 3)
 
-    private fun createShader(location: String, type: Int): Int {
-        val shader = GL20C.glCreateShader(type)
-        val resource = this::class.java.getResourceAsStream(location)
-        checkNotNull(resource) { "Could not read $location" }
-        GL20C.glShaderSource(shader, String(resource.readAllBytes()))
-        GL20C.glCompileShader(shader)
-        val compileStatus = GL20C.glGetShaderi(shader, GL20C.GL_COMPILE_STATUS)
-        val shaderLog = GL20C.glGetShaderInfoLog(shader)
-        if (shaderLog.isNotEmpty()) {
-            System.err.println(shaderLog)
-        }
-        check(compileStatus != 0) { "Could not compile shader" }
-        return shader
-    }
-    private fun createVao() {
-        vao = GL30C.glGenVertexArrays()
+    open fun createVao(): Int {
+        val vao = GL30C.glGenVertexArrays()
         val vbo = GL15C.glGenBuffers()
         GL30C.glBindVertexArray(vao)
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, vbo)
@@ -169,10 +141,7 @@ class UniformArrayDemo {
         val data = floatArrayOf(
             -0.5f, -0.5f,
             0.5f, -0.5f,
-            0.5f, 0.5f,
-            0.5f, 0.5f,
-            -0.5f, 0.5f,
-            -0.5f, -0.5f
+            0.0f, 0.5f,
         )
 
         GL15C.glBufferData(GL15C.GL_ARRAY_BUFFER, data, GL15C.GL_STATIC_DRAW)
@@ -182,10 +151,12 @@ class UniformArrayDemo {
         // unbind
         GL15C.glBindBuffer(GL15C.GL_ARRAY_BUFFER, 0)
         GL30C.glBindVertexArray(0)
+
+        return vao
     }
 
 }
 
 fun main() {
-    UniformArrayDemo().run()
+    SimpleShader("/shaders/SimpleShader-vertex.glsl", "/shaders/SimpleShader-fragment.glsl").run()
 }

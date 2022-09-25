@@ -25,11 +25,11 @@ import org.lwjgl.system.MemoryUtil.*
  * Based on the UniformArrayDemo from lwjgl demos
  */
 open class SimpleShader(private val vertexShader: String, private val fragmentShader: String) {
-    private var window: Long = 0
-    private var width = 1024
-    private var height = 768
-    private var vao = 0
-    private var program = 0
+    protected var window: Long = 0
+    protected var width = 1024
+    protected var height = 768
+    protected var vao = 0
+    protected var program = 0
 
     var errCallback: GLFWErrorCallback? = null
     var debugProc: Callback? = null
@@ -87,8 +87,8 @@ open class SimpleShader(private val vertexShader: String, private val fragmentSh
         GL.createCapabilities()
         debugProc = GLUtil.setupDebugMessageCallback()
 
-        vao = createVao()
         program = createRasterProgram(vertexShader, fragmentShader)
+        vao = createVao()
     }
 
     private fun render() {
